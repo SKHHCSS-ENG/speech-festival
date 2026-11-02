@@ -1,0 +1,438 @@
+/* Ask — draggable circle, bottom-left until the reader moves it.
+   .api-mesh is the shared API wash for this circle, Explain, and SEND.
+   The circle paints the wash on itself. Explain and SEND paint the same
+   wash on ::before (Explain’s pill box stays in learning-materials/explain.css).
+   Blue → violet → magenta → orange → yellow, one 10s loop.
+   ASK, EXPLAIN, and SEND share the site stack, weight 800, and 0.04em
+   tracking. Ink is soft off-white #f4f0e8. Warm stops are deep enough that
+   this ink stays about 4.7:1 or better on every sRGB blend (lightest stop
+   #7c6906). The wash does not use Competition purple #6b2a80.
+   Tools dock CSS is untouched.
+   ask.js clamps the circle, stores the last spot, and snaps clear of the
+   dock, an open Cohesion sheet, and Explain pills. */
+
+.api-mesh {
+  --api-mesh-ink: #f4f0e8;
+  --api-mesh-image: linear-gradient(
+    122deg,
+    #1458d6 0%,
+    #3a3ad0 24%,
+    #c42670 50%,
+    #be3a16 76%,
+    #7c6906 100%
+  );
+}
+
+@keyframes api-mesh-wash {
+  0% { background-position: 0% 40%; }
+  50% { background-position: 100% 60%; }
+  100% { background-position: 0% 40%; }
+}
+
+.ask-floater.api-mesh,
+.explain-btn.api-mesh:not(:disabled)::before,
+.ask-send.api-mesh::before {
+  background-color: #1458d6;
+  background-image: var(--api-mesh-image);
+  background-repeat: no-repeat;
+  background-size: 300% 300%;
+  background-position: 0% 40%;
+  animation: api-mesh-wash 10s ease-in-out infinite;
+}
+
+/* One caps family: site stack, weight 800, .8rem, 0.04em, soft off-white. */
+.ask-floater.api-mesh,
+.ask-send.api-mesh,
+.explain-btn.explain-api-pill.api-mesh:not(:disabled) {
+  color: var(--api-mesh-ink, #f4f0e8);
+  font-family: "Segoe UI", system-ui, -apple-system, "PingFang HK", "Noto Sans TC", sans-serif;
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ask-floater.api-mesh,
+  .explain-btn.api-mesh:not(:disabled)::before,
+  .ask-send.api-mesh::before {
+    animation: none !important;
+    background-size: 100% 100%;
+    background-position: 0% 50%;
+  }
+}
+
+.ask-floater {
+  position: fixed;
+  z-index: 85;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: var(--api-mesh-ink, #f4f0e8);
+  font-family: "Segoe UI", system-ui, -apple-system, "PingFang HK", "Noto Sans TC", sans-serif;
+  /* Same .8rem as SEND and EXPLAIN. At 44px the label still clears the rim. */
+  font-size: .8rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 14px rgba(18, 58, 77, 0.22);
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ask-floater.is-dragging {
+  cursor: grabbing;
+}
+
+.ask-floater:focus {
+  outline: none;
+}
+
+.ask-floater:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #123a4d;
+}
+
+.ask-floater[data-ask-overlap="1"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ask-scrim {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(18, 58, 77, 0.12);
+  cursor: pointer;
+}
+
+.ask-sheet {
+  position: fixed;
+  z-index: 41;
+  left: 12px;
+  right: auto;
+  width: min(360px, calc(100vw - 84px));
+  /* height: auto — empty Find and empty Ask shrink to the tab row + field.
+     max-height is the shared shell: hits and replies scroll inside it and
+     the sheet never grows past it. When Find and Ask AI both have content,
+     ask.js holds one min-height (the taller body, capped here) so switching
+     tabs does not jump. placeSheet may set a smaller max-height above the dock. */
+  height: auto;
+  max-height: min(19.5rem, 70dvh);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 8px 8px;
+  overflow: hidden;
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #eadfe8;
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(18, 58, 77, 0.18);
+  font-family: "Segoe UI", system-ui, -apple-system, "PingFang HK", "Noto Sans TC", sans-serif;
+  box-sizing: border-box;
+}
+
+/* An empty body is still in the sheet. Pull it out of the flex flow so
+   empty Find and empty Ask share one outer height (no extra gap). */
+.ask-sheet:not(.is-filled) .ask-hits,
+.ask-sheet:not(.is-filled) .ask-chat {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  pointer-events: none;
+}
+
+.ask-scrim[hidden],
+.ask-sheet[hidden],
+.ask-hits[hidden],
+.ask-chat[hidden] {
+  display: none !important;
+}
+
+.ask-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  min-height: 44px;
+  flex-shrink: 0;
+  order: 0;
+}
+
+.ask-form {
+  flex-shrink: 0;
+  order: 1;
+}
+
+.ask-hits,
+.ask-chat {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ask-hits {
+  order: 2;
+}
+
+.ask-chat {
+  order: 2;
+}
+
+.ask-mode {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+}
+
+.ask-mode-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid #eadfe8;
+  border-radius: 12px;
+  background: #f7f4f8;
+  color: #64748b;
+  font: 800 .78rem/1.1 inherit;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ask-mode-btn.is-on {
+  background: #ffffff;
+  border-color: #d3e8ef;
+  color: #123a4d;
+}
+
+.ask-mode-btn.is-on.is-ask {
+  border-color: #e4d5ea;
+  background: #fbf8fc;
+  color: #866993;
+}
+
+.ask-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #eadfe8;
+  background: #f8fbfc;
+  color: #123a4d;
+  font-family: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ask-mode-btn:focus {
+  outline: none;
+}
+
+.ask-close:focus-visible,
+.ask-mode-btn:focus-visible,
+.ask-hit:focus-visible,
+.ask-send:focus-visible,
+.ask-box:focus-visible {
+  outline: 2px solid #123a4d;
+  outline-offset: 2px;
+}
+
+.ask-box {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #d3e8ef;
+  border-radius: 12px;
+  background: #f8fbfc;
+  color: #1e293b;
+  font: 600 16px/1.3 inherit;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ask-box::-webkit-search-decoration,
+.ask-box::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.ask-hits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-hits li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-hit {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f7f4f8;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ask-hit-title {
+  font-size: .92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #123a4d;
+}
+
+.ask-hit-path {
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.ask-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  min-height: 0;
+}
+
+.ask-log {
+  overflow: visible;
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+.ask-log:empty {
+  display: none;
+}
+
+.ask-mine,
+.ask-reply {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.ask-mine {
+  color: #334155;
+  font-weight: 600;
+}
+
+.ask-reply a {
+  color: #0c5a70;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.ask-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ask-box {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* SEND wears the live mesh on ::before, same wash as Explain and the circle.
+   The button face stays transparent so the static coral→lilac fill cannot cover it. */
+.ask-send.api-mesh {
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 auto;
+  min-width: 72px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: .8rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.ask-send.api-mesh::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.ask-send:disabled,
+.ask-box:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media print {
+  .ask-floater,
+  .ask-scrim,
+  .ask-sheet {
+    display: none !important;
+  }
+}
