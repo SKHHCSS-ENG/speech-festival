@@ -1,6 +1,6 @@
 /**
  * Site Find — one alias index for Ask and the Learning Materials hub.
- * Tess 2026-10-29 (32 entries). Matching uses the hub brain:
+ * Tess 2026-10-29 (33 entries). Matching uses the hub brain:
  * collapse whitespace, trim, lower-case, then indexOf.
  * Ask ranks exact, then prefix, then substring, and keeps 3 hits.
  */
@@ -365,6 +365,16 @@
         "u47",
         "one moment in summer",
         "s5 girls one moment"
+      ]
+    },
+    {
+      "title": "S3 Boys · Limpet (U65)",
+      "path": "speech-festival/u65/",
+      "aliases": [
+        "u65",
+        "limpet",
+        "s3 boys limpet",
+        "chrissie gittins"
       ]
     },
     {
